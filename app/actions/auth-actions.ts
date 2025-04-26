@@ -29,7 +29,6 @@ export async function loginAction(data: LoginData): Promise<AuthResult> {
     });
 
     const result = await response.json();
-    console.log("Login result:", result)
 
     if (!response.ok) {
       return {
