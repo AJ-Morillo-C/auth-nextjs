@@ -39,12 +39,7 @@ export async function loginAction(data: LoginData): Promise<AuthResult> {
 
     if (result.access_token) {
       const cookieStore = await cookies()
-      cookieStore.set("access-token", result.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/",
-      });
+      cookieStore.set("access-token", result.access_token);
     }
 
     return {
@@ -121,3 +116,75 @@ export async function getCurrentUser() {
     return null;
   }
 }
+
+type ResetPasswordData = {
+  token: string
+  password: string
+}
+
+export async function requestPasswordResetAction(email: string): Promise<AuthResult> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result.message || 'Error al solicitar recuperación',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Error en solicitud de recuperación:', error);
+    return {
+      success: false,
+      error: 'Error de conexión',
+    };
+  }
+}
+
+export async function resetPasswordAction(data: ResetPasswordData): Promise<AuthResult> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+
+      body: JSON.stringify({
+        token: data.token,
+        newPassword: data.password,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result.message || 'Error al restablecer contraseña',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Error en restablecimiento:', error);
+    return {
+      success: false,
+      error: 'Error de conexión',
+    };
+  }
+}
+

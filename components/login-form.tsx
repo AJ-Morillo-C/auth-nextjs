@@ -95,7 +95,7 @@ export function LoginForm() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+            <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
