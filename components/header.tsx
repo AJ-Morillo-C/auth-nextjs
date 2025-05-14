@@ -39,8 +39,6 @@ export function Header({ user }: HeaderProps) {
 
     if (!mounted) return null
 
-    console.log(user)
-
     // Si no hay usuario, mostramos un encabezado simple
     if (!user) {
         return (

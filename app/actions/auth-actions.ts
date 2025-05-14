@@ -19,7 +19,6 @@ type AuthResult = {
   error?: string
 }
 
-let cachedUser: any = null;
 
 export async function loginAction(data: LoginData): Promise<AuthResult> {
   try {
@@ -91,20 +90,16 @@ export async function registerAction(data: RegisterData): Promise<AuthResult> {
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.delete("access-token")
-  cachedUser = null;
 }
 
 export async function getCurrentUser() {
-  // if (cachedUser) {
-  //   return cachedUser; // Devuelve el usuario cacheado si ya existe
-  // }
 
   const cookieStore = await cookies();
   const token = cookieStore.get("access-token")?.value;
 
   if (!token) {
     console.log("No se encontró token");
-    return null; // Si no hay token, no se realiza la solicitud
+    return null;
   }
 
   try {
@@ -117,15 +112,15 @@ export async function getCurrentUser() {
 
     if (!response.ok) {
       const errorData = await response.json();
+      cookieStore.delete("access-token");
       console.error("Error al verificar el token:", errorData);
-      return null; // No intentes modificar cookies aquí
+      return null;
     }
 
-    cachedUser = await response.json(); // Cachea el usuario después de la primera solicitud
-    return cachedUser;
+    const userData = await response.json();
+    return userData;
   } catch (error) {
     console.error("Error al obtener usuario:", error);
-    cachedUser = null; // Limpia el cache en caso de error
     return null;
   }
 }
@@ -288,6 +283,72 @@ export async function changePasswordAction(data: { currentPassword: string; newP
     return {
       success: false,
       error: 'Error de conexión con el servidor',
+    };
+  }
+
+
+}
+
+export async function updateProfilePhotoAction(formData: FormData): Promise<AuthResult> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("access-token")?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: "No has iniciado sesión",
+      };
+    }
+
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64").toString("utf-8")
+    );
+    const userId = payload.id;
+    if (!userId) {
+      return {
+        success: false,
+        error: "No se pudo obtener el ID del usuario",
+      };
+    }
+
+    const profilePhoto = formData.get("profilePhoto") as File;
+    if (!profilePhoto) {
+      return {
+        success: false,
+        error: "No se ha proporcionado una foto de perfil",
+      };
+    }
+
+    const backendFormData = new FormData();
+    backendFormData.append("file", profilePhoto);
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${userId}/photo`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: backendFormData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.message || "Error al actualizar la foto de perfil",
+      };
+    }
+
+    revalidatePath("/", "layout");
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error al actualizar la foto de perfil:", error);
+    return {
+      success: false,
+      error: "Error de conexión con el servidor",
     };
   }
 }
