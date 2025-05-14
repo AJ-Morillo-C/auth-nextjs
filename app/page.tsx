@@ -11,12 +11,12 @@ export default function Home() {
           <div className="flex justify-center space-x-4">
             <Link href="/login">
               <Button variant="default" className="bg-blue-600">
-                Login
+                Iniciar sesión
               </Button>
             </Link>
             <Link href="/register">
               <Button variant="default" className="bg-green-600">
-                Register
+                Regístrate
               </Button>
             </Link>
           </div>

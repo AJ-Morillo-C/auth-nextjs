@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 
 type LoginData = {
@@ -17,6 +18,8 @@ type AuthResult = {
   success: boolean
   error?: string
 }
+
+let cachedUser: any = null;
 
 export async function loginAction(data: LoginData): Promise<AuthResult> {
   try {
@@ -88,31 +91,41 @@ export async function registerAction(data: RegisterData): Promise<AuthResult> {
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies()
   cookieStore.delete("access-token")
+  cachedUser = null;
 }
 
 export async function getCurrentUser() {
-  const cookieStore = await cookies()
+  // if (cachedUser) {
+  //   return cachedUser; // Devuelve el usuario cacheado si ya existe
+  // }
+
+  const cookieStore = await cookies();
   const token = cookieStore.get("access-token")?.value;
 
   if (!token) {
-    return null;
+    console.log("No se encontró token");
+    return null; // Si no hay token, no se realiza la solicitud
   }
 
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify`, {
       method: "POST",
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
-      return null;
+      const errorData = await response.json();
+      console.error("Error al verificar el token:", errorData);
+      return null; // No intentes modificar cookies aquí
     }
 
-    return await response.json();
+    cachedUser = await response.json(); // Cachea el usuario después de la primera solicitud
+    return cachedUser;
   } catch (error) {
-    console.error('Error al obtener usuario:', error);
+    console.error("Error al obtener usuario:", error);
+    cachedUser = null; // Limpia el cache en caso de error
     return null;
   }
 }
@@ -188,3 +201,93 @@ export async function resetPasswordAction(data: ResetPasswordData): Promise<Auth
   }
 }
 
+export async function updateProfileAction(data: { id: string, name: string; email: string }): Promise<AuthResult> {
+
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get("access-token")?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: 'No se encontró el token de acceso'
+      }
+    }
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${data.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: data.name,
+        email: data.email,
+      }),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.message || 'Error al actualizar el perfil',
+      };
+    }
+
+    revalidatePath("/", "layout")
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    return {
+      success: false,
+      error: 'Error de conexión con el servidor',
+    };
+  }
+}
+
+export async function changePasswordAction(data: { currentPassword: string; newPassword: string; }): Promise<AuthResult> {
+  try {
+
+    const cookieStore = await cookies()
+    const token = cookieStore.get("access-token")?.value;
+
+    if (!token) {
+      return {
+        success: false,
+        error: 'No se encontró el token de acceso'
+      }
+    }
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: errorData.message || 'Error al cambiar la contraseña',
+      };
+    }
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    return {
+      success: false,
+      error: 'Error de conexión con el servidor',
+    };
+  }
+}

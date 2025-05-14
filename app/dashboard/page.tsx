@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getCurrentUser, logoutAction } from "@/app/actions/auth-actions"
+import { User } from "lucide-react"
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -18,11 +20,7 @@ export default async function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">Bienvenido, {user.name}</p>
             </div>
-            <form action={logoutAction}>
-              <Button type="submit" variant="outline">
-                Cerrar sesión
-              </Button>
-            </form>
+
           </div>
           <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
             <p className="text-gray-700">Has iniciado sesión correctamente. Esta es tu área personal.</p>
